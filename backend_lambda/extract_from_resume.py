@@ -1,6 +1,15 @@
 from openai import OpenAI
 import json
-import fitz  # PyMuPDF
+import fitz
+import boto3
+import os
+import uuid
+
+os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAZR7BH5KNJM727DVT'
+os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
+
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+table = dynamodb.Table("resumes")
 
 client = OpenAI(api_key="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")
 
@@ -45,8 +54,7 @@ def extract_text_and_links(pdf_path):
 
     return "\n".join(output_lines)
 
-print(extract_text_and_links('resume.pdf'))
-response = client.responses.create(
+response = json.loads(client.responses.create(
     model="gpt-4.1-nano",
     input=[
         {
@@ -438,6 +446,16 @@ response = client.responses.create(
     max_output_tokens=2048,
     top_p=1,
     store=True
-)
+).output[0].arguments)
+response['id'] = str(uuid.uuid4())
 
-print(json.loads(response.output[0].arguments))
+def clean_none(obj):
+    if isinstance(obj, dict):
+        return {k: clean_none(v) for k, v in obj.items() if v is not None}
+    elif isinstance(obj, list):
+        return [clean_none(i) for i in obj if i is not None]
+    else:
+        return obj
+
+cleaned_data = clean_none(response)
+table.put_item(Item=cleaned_data)

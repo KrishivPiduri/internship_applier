@@ -1,24 +1,51 @@
 from openai import OpenAI
-import pdfplumber
-import os
 import json
+import fitz  # PyMuPDF
 
 client = OpenAI(api_key="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")
 
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """
-    Opens the PDF, extracts all text, and returns a single string with newlines.
-    """
-    if not os.path.isfile(pdf_path):
-        raise FileNotFoundError(f"File not found: {pdf_path}")
+def extract_text_and_links(pdf_path):
+    doc = fitz.open(pdf_path)
+    output_lines = []
 
-    pages_text = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            pages_text.append(text)
-    return "\n".join(pages_text)
-print(extract_text_from_pdf('resume.pdf'))
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+        blocks = page.get_text("dict")["blocks"]
+
+        # Collect all links on the page for quick access by bbox
+        links = page.get_links()
+        # Transform links list to bbox->uri mapping for fast lookup
+        link_rects = []
+        for link in links:
+            if 'uri' in link:
+                link_rects.append((fitz.Rect(link["from"]), link["uri"]))
+
+        for block in blocks:
+            if block['type'] == 0:  # text block
+                for line in block["lines"]:
+                    line_text = ""
+                    for span in line["spans"]:
+                        span_rect = fitz.Rect(span["bbox"])
+                        # Check if this span overlaps with any link rect
+                        matched_link = None
+                        for rect, uri in link_rects:
+                            if rect.intersects(span_rect):
+                                matched_link = uri
+                                break
+
+                        if matched_link:
+                            # Append the span text with the link in parentheses
+                            line_text += f"{span['text']} ({matched_link})"
+                        else:
+                            line_text += span["text"]
+                    output_lines.append(line_text)
+            else:
+                # For non-text blocks, ignore or process if needed
+                pass
+
+    return "\n".join(output_lines)
+
+print(extract_text_and_links('resume.pdf'))
 response = client.responses.create(
     model="gpt-4.1-nano",
     input=[
@@ -36,7 +63,7 @@ response = client.responses.create(
             "content": [
                 {
                     "type": "input_text",
-                    "text": extract_text_from_pdf("resume.pdf")
+                    "text": extract_text_and_links("resume.pdf")
                 }
             ]
         },

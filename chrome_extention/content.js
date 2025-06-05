@@ -41,8 +41,58 @@
 
         function getInputFields(form) {
             if (!form) return [];
-            console.log("Inputs: ", Array.from(form.querySelectorAll('input, select, textarea')).length)
-            return Array.from(form.querySelectorAll('input, select, textarea'));
+
+            // 1) Grab all “native” inputs/selects/textareas:
+            const standardInputs = Array.from(
+                form.querySelectorAll('input, select, textarea')
+            );
+
+            // 2) Grab any custom “react-select”‐style inputs:
+            const customSelects = Array.from(
+                form.querySelectorAll('.select__input-container input')
+            );
+
+            // If there are no custom selects, we’ll still log the total:
+            console.log("Detected inputs (native + custom):",
+                standardInputs.length + customSelects.length);
+
+            // 3) For each custom select, simulate a click (mousedown→mouseup→click)
+            //    so that React/your UI library actually renders the dropdown:
+            customSelects.forEach(input => {
+                // First, focus so the component knows it’s active:
+                input.focus();
+
+                // Dispatch mousedown -> mouseup -> click in sequence:
+                ['mousedown', 'mouseup', 'click'].forEach(evtName => {
+                    const evt = new MouseEvent(evtName, { bubbles: true });
+                    input.dispatchEvent(evt);
+                });
+            });
+
+            // 4) Wait a bit longer (200ms) for React to mount the listbox,
+            //    then query all open `[role="listbox"] [role="option"]`:
+            setTimeout(() => {
+                const listboxes = document.querySelectorAll('[role="listbox"]');
+                listboxes.forEach(listbox => {
+                    const options = Array.from(listbox.querySelectorAll('[role="option"]'));
+                    if (options.length > 0) {
+                        console.log(
+                            "Custom select options:",
+                            options.map(opt => opt.textContent.trim())
+                        );
+                    }
+                });
+
+                // 5) After logging, close any open dropdown by sending Escape:
+                const escEvent = new KeyboardEvent('keydown', {
+                    key: 'Escape',
+                    bubbles: true,
+                });
+                customSelects.forEach(input => input.dispatchEvent(escEvent));
+            }, 200);
+
+            // Return a unified list of "input‐like" elements to highlight:
+            return [...new Set([...standardInputs, ...customSelects])];
         }
 
         function highlightForm(form) {
@@ -74,7 +124,6 @@
             document.head.appendChild(style);
         }
 
-        // Debounced detection
         let timeout;
         function debouncedDetect() {
             clearTimeout(timeout);
@@ -84,7 +133,6 @@
             }, 500);
         }
 
-        // Observe DOM changes
         const observer = new MutationObserver(debouncedDetect);
         observer.observe(document.body, {
             childList: true,
@@ -95,12 +143,11 @@
         injectStyles();
         debouncedDetect();
 
-        // Optional global exports
+        // Expose these if you need them elsewhere
         window.findMainForm = findMainForm;
         window.getInputFields = getInputFields;
     }
 
-    // Run when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

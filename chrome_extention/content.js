@@ -41,7 +41,7 @@
 
         function getInputFields(form) {
             if (!form) return [];
-            console.log("Inputs: ", Array.from(form.querySelectorAll('input, select, textarea')))
+            console.log("Inputs: ", Array.from(form.querySelectorAll('input, select, textarea')).length)
             return Array.from(form.querySelectorAll('input, select, textarea'));
         }
 

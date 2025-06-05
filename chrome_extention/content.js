@@ -5,22 +5,22 @@
         let lastHighlightedForm = null;
 
         function findMainForm() {
-            const forms = Array.from(document.forms);
+            const forms = Array.from(document.forms).filter(f => f.offsetParent !== null); // Only visible forms
             if (!forms.length) return null;
 
             function scoreForm(form) {
                 const inputs = form.querySelectorAll('input, select, textarea');
                 const numInputs = inputs.length;
-                const hasPassword = form.querySelector('input[type="password"]') !== null;
                 const hasSubmit = form.querySelector('button, input[type="submit"]') !== null;
-                const rect = form.getBoundingClientRect();
-                const area = rect.width * rect.height;
 
                 let score = 0;
                 score += numInputs * 2;
-                score += hasPassword ? 10 : 0;
                 score += hasSubmit ? 5 : 0;
-                score += area > 0 ? Math.log(area) : 0;
+
+                // Add bonus if form has known class/id pattern indicating it's the main application form
+                if (form.classList.contains('application-form') || form.id.includes('main')) {
+                    score += 50;
+                }
 
                 return score;
             }
@@ -42,57 +42,77 @@
         function getInputFields(form) {
             if (!form) return [];
 
-            // 1) Grab all “native” inputs/selects/textareas:
-            const standardInputs = Array.from(
-                form.querySelectorAll('input, select, textarea')
-            );
+            const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
+            const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
 
-            // 2) Grab any custom “react-select”‐style inputs:
-            const customSelects = Array.from(
-                form.querySelectorAll('.select__input-container input')
-            );
+            const allInputs = [...new Set([...standardInputs, ...customSelects])];
 
-            // If there are no custom selects, we’ll still log the total:
-            console.log("Detected inputs (native + custom):",
-                standardInputs.length + customSelects.length);
-
-            // 3) For each custom select, simulate a click (mousedown→mouseup→click)
-            //    so that React/your UI library actually renders the dropdown:
             customSelects.forEach(input => {
-                // First, focus so the component knows it’s active:
                 input.focus();
-
-                // Dispatch mousedown -> mouseup -> click in sequence:
                 ['mousedown', 'mouseup', 'click'].forEach(evtName => {
                     const evt = new MouseEvent(evtName, { bubbles: true });
                     input.dispatchEvent(evt);
                 });
             });
 
-            // 4) Wait a bit longer (200ms) for React to mount the listbox,
-            //    then query all open `[role="listbox"] [role="option"]`:
             setTimeout(() => {
-                const listboxes = document.querySelectorAll('[role="listbox"]');
-                listboxes.forEach(listbox => {
-                    const options = Array.from(listbox.querySelectorAll('[role="option"]'));
-                    if (options.length > 0) {
-                        console.log(
-                            "Custom select options:",
-                            options.map(opt => opt.textContent.trim())
-                        );
+                const fieldDetails = allInputs.map(input => {
+                    let label = '';
+
+                    if (input.id) {
+                        const lbl = document.querySelector(`label[for='${input.id}']`);
+                        if (lbl) label = lbl.textContent.trim();
                     }
+
+                    if (!label && input.hasAttribute('aria-labelledby')) {
+                        const ids = input.getAttribute('aria-labelledby').split(/\s+/);
+                        label = ids.map(id => {
+                            const el = document.getElementById(id);
+                            return el ? el.textContent.trim() : '';
+                        }).filter(Boolean).join(' ');
+                    }
+
+                    if (!label && input.hasAttribute('aria-label')) {
+                        label = input.getAttribute('aria-label').trim();
+                    }
+
+                    if (!label) {
+                        const container = input.closest('div, td, th, span, p');
+                        if (container) {
+                            const maybeLabel = Array.from(container.childNodes).find(node => node.nodeType === 3);
+                            if (maybeLabel) label = maybeLabel.textContent.trim();
+                        }
+                    }
+
+                    let options = [];
+                    if (input.matches('select')) {
+                        options = Array.from(input.options).map(opt => opt.textContent.trim());
+                    } else {
+                        const listbox = input.getAttribute('aria-controls')
+                            ? document.getElementById(input.getAttribute('aria-controls'))
+                            : null;
+
+                        if (listbox && listbox.getAttribute('role') === 'listbox') {
+                            options = Array.from(listbox.querySelectorAll('[role="option"]'))
+                                .map(opt => opt.textContent.trim());
+                        } else {
+                            const fallbackListboxes = document.querySelectorAll('[role="listbox"]');
+                            fallbackListboxes.forEach(lb => {
+                                if (lb.offsetParent !== null) {
+                                    options = Array.from(lb.querySelectorAll('[role="option"]'))
+                                        .map(opt => opt.textContent.trim());
+                                }
+                            });
+                        }
+                    }
+
+                    return { element: input, label, options };
                 });
 
-                // 5) After logging, close any open dropdown by sending Escape:
-                const escEvent = new KeyboardEvent('keydown', {
-                    key: 'Escape',
-                    bubbles: true,
-                });
-                customSelects.forEach(input => input.dispatchEvent(escEvent));
-            }, 200);
+                console.log("Form Field Summary:", fieldDetails);
+            }, 500);
 
-            // Return a unified list of "input‐like" elements to highlight:
-            return [...new Set([...standardInputs, ...customSelects])];
+            return allInputs;
         }
 
         function highlightForm(form) {
@@ -107,7 +127,6 @@
                 const inputs = getInputFields(form);
                 inputs.forEach(el => el.classList.add('highlighted-input'));
                 lastHighlightedForm = form;
-                console.log("Highlighted form in frame:", window.location.href, form);
             }
         }
 
@@ -124,13 +143,19 @@
             document.head.appendChild(style);
         }
 
-        let timeout;
+        let detectTimeout;
+        let idleTimer;
+
         function debouncedDetect() {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                const form = findMainForm();
-                highlightForm(form);
-            }, 500);
+            clearTimeout(detectTimeout);
+            detectTimeout = setTimeout(() => {
+                // Wait until no mutations happen for a while (quiescence)
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    const form = findMainForm();
+                    highlightForm(form);
+                }, 800);
+            }, 200);
         }
 
         const observer = new MutationObserver(debouncedDetect);
@@ -143,7 +168,6 @@
         injectStyles();
         debouncedDetect();
 
-        // Expose these if you need them elsewhere
         window.findMainForm = findMainForm;
         window.getInputFields = getInputFields;
     }

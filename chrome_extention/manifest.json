@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Smart Form Detector",
+  "version": "1.0",
+  "description": "Scans and highlights job application fields for auto-filling.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.jpg"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+        "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

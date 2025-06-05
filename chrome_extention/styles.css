@@ -1,0 +1,4 @@
+.highlighted-main-form {
+    outline: 4px solid red !important;
+    background-color: rgba(255, 0, 0, 0.05);
+}

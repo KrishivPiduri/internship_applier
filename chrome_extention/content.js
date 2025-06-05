@@ -4,8 +4,12 @@
 
         let lastHighlightedForm = null;
 
+        function isVisible(el) {
+            return el.offsetParent !== null;
+        }
+
         function findMainForm() {
-            const forms = Array.from(document.forms).filter(f => f.offsetParent !== null); // Only visible forms
+            const forms = Array.from(document.forms).filter(isVisible);
             if (!forms.length) return null;
 
             function scoreForm(form) {
@@ -17,9 +21,11 @@
                 score += numInputs * 2;
                 score += hasSubmit ? 5 : 0;
 
-                // Add bonus if form has known class/id pattern indicating it's the main application form
-                if (form.classList.contains('application-form') || form.id.includes('main')) {
-                    score += 50;
+                // Bonus for form id or class names that suggest importance
+                const hints = ['main', 'application', 'apply'];
+                const idClass = (form.id + ' ' + form.className).toLowerCase();
+                if (hints.some(h => idClass.includes(h))) {
+                    score += 10;
                 }
 
                 return score;
@@ -44,15 +50,17 @@
 
             const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
             const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
-
             const allInputs = [...new Set([...standardInputs, ...customSelects])];
 
+            // Expand and collapse custom selects to trigger rendering
             customSelects.forEach(input => {
                 input.focus();
                 ['mousedown', 'mouseup', 'click'].forEach(evtName => {
                     const evt = new MouseEvent(evtName, { bubbles: true });
                     input.dispatchEvent(evt);
                 });
+                // collapse again
+                input.blur();
             });
 
             setTimeout(() => {
@@ -143,19 +151,15 @@
             document.head.appendChild(style);
         }
 
-        let detectTimeout;
-        let idleTimer;
-
+        let timeout;
         function debouncedDetect() {
-            clearTimeout(detectTimeout);
-            detectTimeout = setTimeout(() => {
-                // Wait until no mutations happen for a while (quiescence)
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(() => {
-                    const form = findMainForm();
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const form = findMainForm();
+                setTimeout(() => {
                     highlightForm(form);
-                }, 800);
-            }, 200);
+                }, 200);
+            }, 500);
         }
 
         const observer = new MutationObserver(debouncedDetect);

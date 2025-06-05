@@ -1,4 +1,6 @@
 (function () {
+    if (!document || !document.forms) return;
+
     let lastHighlightedForm = null;
 
     function scoreForm(form) {
@@ -43,30 +45,25 @@
         if (form && form !== lastHighlightedForm) {
             form.classList.add('highlighted-main-form');
             lastHighlightedForm = form;
-            console.log("Main form highlighted:", form);
+            console.log("Highlighted form in frame:", window.location.href, form);
         }
     }
 
-    function detectAndHighlight() {
-        const form = findMainForm();
-        highlightForm(form);
-    }
-
-    // Debounce updates
     let timeout;
     function debouncedDetect() {
         clearTimeout(timeout);
-        timeout = setTimeout(detectAndHighlight, 500);
+        timeout = setTimeout(() => {
+            const form = findMainForm();
+            highlightForm(form);
+        }, 500);
     }
 
-    // Observe dynamic changes
-    observer = new MutationObserver(debouncedDetect);
+    const observer = new MutationObserver(debouncedDetect);
     observer.observe(document.body, {
         childList: true,
         subtree: true,
         attributes: true
     });
 
-    // Run once on load
     debouncedDetect();
 })();

@@ -200,5 +200,5 @@
         }, {})
     };
 
-    console.log("Form structure with groups:", window.__formAutofillStructure);
+   console.log("Form structure with groups:", window.__formAutofillStructure);
 })();

@@ -45,6 +45,88 @@
             return bestForm;
         }
 
+        // 1. Find all inputs/selects/textareas whose id ends with "--<number>"
+        function findRepeatingById(form) {
+            const idElements = Array.from(form.querySelectorAll('input[id], select[id], textarea[id]'))
+                .filter(el => /--\d+$/.test(el.id));
+
+            const groups = {};
+            idElements.forEach(el => {
+                const match = el.id.match(/^(.*)--(\d+)$/);
+                if (!match) return;
+                const idx = parseInt(match[2], 10); // numeric index
+                if (!groups[idx]) groups[idx] = [];
+                groups[idx].push(el);
+            });
+
+            return groups; // { 0: [el, el, ...], 1: [el, ...], ... }
+        }
+
+        // 2. Given an array of elements, find their lowest common ancestor
+        function getCommonAncestor(nodes) {
+            if (!nodes.length) return null;
+            function ancestorChain(el) {
+                const chain = [];
+                let curr = el;
+                while (curr) {
+                    chain.unshift(curr);
+                    curr = curr.parentElement;
+                }
+                return chain;
+            }
+            const chains = nodes.map(ancestorChain);
+            let common = null;
+            for (let i = 0; ; i++) {
+                const first = chains[0][i];
+                if (!first) break;
+                if (chains.every(chain => chain[i] === first)) {
+                    common = first;
+                } else {
+                    break;
+                }
+            }
+            return common;
+        }
+
+        // 3. Watch for any new element whose id ends with "--<newIndex>"
+        function watchForNewIdIndex(form, lastIndex) {
+            const observer = new MutationObserver(records => {
+                records.forEach(record => {
+                    record.addedNodes.forEach(node => {
+                        if (!(node instanceof HTMLElement)) return;
+
+                        // Check node itself
+                        const ownMatch = node.id && node.id.match(/^(.*)--(\d+)$/);
+                        if (ownMatch) {
+                            const idx = parseInt(ownMatch[2], 10);
+                            if (idx > lastIndex) {
+                                observer.disconnect();
+                                const idGroups = findRepeatingById(form);
+                                const container = getCommonAncestor(idGroups[idx] || []);
+                                console.log(`New block “--${idx}” appeared. Container:`, container);
+                            }
+                        }
+
+                        // Check descendants
+                        const descendants = node.querySelectorAll('[id]');
+                        descendants.forEach(el => {
+                            const m = el.id.match(/^(.*)--(\d+)$/);
+                            if (!m) return;
+                            const idx = parseInt(m[2], 10);
+                            if (idx > lastIndex) {
+                                observer.disconnect();
+                                const idGroups = findRepeatingById(form);
+                                const container = getCommonAncestor(idGroups[idx] || []);
+                                console.log(`New block “--${idx}” appeared. Container:`, container);
+                            }
+                        });
+                    });
+                });
+            });
+
+            observer.observe(form, { subtree: true, childList: true });
+        }
+
         function getInputFields(form) {
             if (!form) return [];
 
@@ -149,6 +231,23 @@
                 });
 
                 console.log("Form Field Summary:", fieldDetails);
+
+                // ------------ REPEATING-GROUP DETECTION BY ID PATTERN ------------
+                const idGroups = findRepeatingById(form);
+                const indices = Object.keys(idGroups)
+                    .map(n => parseInt(n, 10))
+                    .sort((a, b) => a - b);
+                const maxIndex = indices.length ? indices[indices.length - 1] : -1;
+
+                indices.forEach(idx => {
+                    const container = getCommonAncestor(idGroups[idx]);
+                    console.log(`Detected block index ${idx}. Container:`, container);
+                });
+
+                // Now watch for a new index > maxIndex
+                watchForNewIdIndex(form, maxIndex);
+                // ----------------------------------------------------------------
+
             }, 500);
 
             return allInputs;
@@ -203,8 +302,12 @@
         injectStyles();
         debouncedDetect();
 
+        // Expose helpers if needed
         window.findMainForm = findMainForm;
         window.getInputFields = getInputFields;
+        window.findRepeatingById = findRepeatingById;
+        window.getCommonAncestor = getCommonAncestor;
+        window.watchForNewIdIndex = watchForNewIdIndex;
     }
 
     if (document.readyState === 'loading') {

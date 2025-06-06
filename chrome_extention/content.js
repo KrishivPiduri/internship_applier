@@ -92,23 +92,30 @@
                         }
                     }
 
-                    let options = [];
+                    let options = null;
+                    // For native selects
                     if (input.matches('select')) {
                         options = Array.from(input.options).map(opt => opt.textContent.trim());
                     } else {
+                        // For custom dropdowns using ARIA
                         const listbox = input.getAttribute('aria-controls')
                             ? document.getElementById(input.getAttribute('aria-controls'))
                             : null;
-
-                        if (listbox && listbox.getAttribute('role') === 'listbox') {
-                            options = Array.from(listbox.querySelectorAll('[role="option"]'))
+                        if (listbox?.getAttribute('role') === 'listbox') {
+                            const opts = Array.from(listbox.querySelectorAll('[role="option"]'))
                                 .map(opt => opt.textContent.trim());
+                            if (opts.length) options = opts;
                         } else {
-                            const fallbackListboxes = document.querySelectorAll('[role="listbox"]');
+                            // Fallback within same container
+                            const container = input.closest('div, td, th, span, p');
+                            const fallbackListboxes = container
+                                ? container.querySelectorAll('[role="listbox"]')
+                                : [];
                             fallbackListboxes.forEach(lb => {
                                 if (lb.offsetParent !== null) {
-                                    options = Array.from(lb.querySelectorAll('[role="option"]'))
+                                    const opts = Array.from(lb.querySelectorAll('[role="option"]'))
                                         .map(opt => opt.textContent.trim());
+                                    if (opts.length) options = opts;
                                 }
                             });
                         }

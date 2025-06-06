@@ -52,15 +52,16 @@
             const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
             const allInputs = [...new Set([...standardInputs, ...customSelects])];
 
-            // Expand and collapse custom selects to trigger rendering
+            // Trigger dropdowns: keep comboboxes open to allow options to render
             customSelects.forEach(input => {
+                const isCombo = input.getAttribute('role') === 'combobox' || input.getAttribute('aria-autocomplete') === 'list';
                 input.focus();
                 ['mousedown', 'mouseup', 'click'].forEach(evtName => {
                     const evt = new MouseEvent(evtName, { bubbles: true });
                     input.dispatchEvent(evt);
                 });
-                // collapse again
-                input.blur();
+                // collapse non-combo selects only
+                if (!isCombo) input.blur();
             });
 
             setTimeout(() => {
@@ -121,7 +122,30 @@
                         }
                     }
 
-                    return { element: input, label, options };
+                    const isComboField = input.getAttribute('role') === 'combobox' && input.getAttribute('aria-autocomplete') === 'list';
+                    const field = { element: input, label, options, lazyLoad: isComboField && options === null };
+                    if (isComboField) {
+                        const obs = new MutationObserver(records => {
+                            records.forEach(r => {
+                                if (r.attributeName === 'aria-expanded' && input.getAttribute('aria-expanded') === 'true') {
+                                    const lbId = input.getAttribute('aria-controls');
+                                    const lb = lbId ? document.getElementById(lbId) : null;
+                                    if (lb) {
+                                        const newOpts = Array.from(lb.querySelectorAll('[role="option"]'))
+                                            .map(opt => opt.textContent.trim());
+                                        if (newOpts.length) {
+                                            field.options = newOpts;
+                                            field.lazyLoad = false;
+                                            console.log('Lazy-loaded options for', label, newOpts);
+                                            obs.disconnect();
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                        obs.observe(input, { attributes: true, attributeFilter: ['aria-expanded'] });
+                    }
+                    return field;
                 });
 
                 console.log("Form Field Summary:", fieldDetails);

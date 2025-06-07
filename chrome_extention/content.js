@@ -105,10 +105,15 @@
 
                     return { element: input, label, options };
                 });
-
+                customSelects.forEach(input => {
+                    input.focus();
+                    ['mousedown', 'mouseup', 'click'].forEach(evtName => {
+                        const evt = new MouseEvent(evtName, { bubbles: true });
+                        input.dispatchEvent(evt);
+                    });
+                });
                 console.log("Form Field Summary:", fieldDetails);
             }, 500);
-
             return allInputs;
         }
 

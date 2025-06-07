@@ -5,7 +5,8 @@
         let lastHighlightedForm = null;
 
         function findMainForm() {
-            const forms = Array.from(document.forms).filter(f => f.offsetParent !== null); // Only visible forms
+            const forms = Array.from(document.forms).filter(f => f.offsetParent !== null);
+            console.log(forms.length);
             if (!forms.length) return null;
 
             function scoreForm(form) {
@@ -17,7 +18,6 @@
                 score += numInputs * 2;
                 score += hasSubmit ? 5 : 0;
 
-                // Add bonus if form has known class/id pattern indicating it's the main application form
                 if (form.classList.contains('application-form') || form.id.includes('main')) {
                     score += 50;
                 }
@@ -88,21 +88,18 @@
                     if (input.matches('select')) {
                         options = Array.from(input.options).map(opt => opt.textContent.trim());
                     } else {
-                        const listbox = input.getAttribute('aria-controls')
-                            ? document.getElementById(input.getAttribute('aria-controls'))
-                            : null;
+                        const listboxId = input.getAttribute('aria-controls');
+                        const listbox = listboxId ? document.getElementById(listboxId) : null;
 
                         if (listbox && listbox.getAttribute('role') === 'listbox') {
                             options = Array.from(listbox.querySelectorAll('[role="option"]'))
                                 .map(opt => opt.textContent.trim());
                         } else {
-                            const fallbackListboxes = document.querySelectorAll('[role="listbox"]');
-                            fallbackListboxes.forEach(lb => {
-                                if (lb.offsetParent !== null) {
-                                    options = Array.from(lb.querySelectorAll('[role="option"]'))
-                                        .map(opt => opt.textContent.trim());
-                                }
-                            });
+                            const fallbackListbox = input.closest('[role="listbox"]');
+                            if (fallbackListbox && fallbackListbox.offsetParent !== null) {
+                                options = Array.from(fallbackListbox.querySelectorAll('[role="option"]'))
+                                    .map(opt => opt.textContent.trim());
+                            }
                         }
                     }
 
@@ -149,7 +146,6 @@
         function debouncedDetect() {
             clearTimeout(detectTimeout);
             detectTimeout = setTimeout(() => {
-                // Wait until no mutations happen for a while (quiescence)
                 clearTimeout(idleTimer);
                 idleTimer = setTimeout(() => {
                     const form = findMainForm();

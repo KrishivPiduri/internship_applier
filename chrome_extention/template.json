@@ -1,0 +1,173 @@
+{
+  "fields": [
+    {
+      "element": {},
+      "label": "First Name*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Last Name*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Email*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Phone*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Attach",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Please confirm your graduation time frame.*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "What are your preferred pronouns?*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "LinkedIn Profile",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Current Location*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Current Employer",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Work Authorization*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Sponsorship Requirements*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "If so, please explain (visa status and expiration)",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "How did you hear about Optiver? *",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "If other, please explain",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Austin",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Chicago",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Terms and Conditions*",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Gender",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Are you Hispanic/Latino?",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Veteran Status",
+      "options": []
+    },
+    {
+      "element": {},
+      "label": "Disability Status",
+      "options": []
+    }
+  ],
+  "groups": [
+    {
+      "label": "Education",
+      "blocks":
+        [
+          {
+            "element": {},
+            "label": "School",
+            "options": []
+          },
+          {
+            "element": {},
+            "label": "Degree",
+            "options": []
+          },
+          {
+            "element": {},
+            "label": "Decipline",
+            "options": []
+          }
+        ]
+
+    }
+  ]
+}

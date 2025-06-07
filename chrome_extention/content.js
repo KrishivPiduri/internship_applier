@@ -2,8 +2,11 @@
     function init() {
         if (!document || !document.forms || !document.body) return;
 
+        let lastHighlightedForm = null;
+
         function findMainForm() {
             const forms = Array.from(document.forms).filter(f => f.offsetParent !== null);
+            console.log(forms.length);
             if (!forms.length) return null;
 
             function scoreForm(form) {
@@ -36,123 +39,171 @@
             return bestForm;
         }
 
-        function getLabelForInput(input) {
-            let label = '';
+        function getInputFields(form) {
+            if (!form) return [];
 
-            if (input.id) {
-                const lbl = document.querySelector(`label[for='${input.id}']`);
-                if (lbl) label = lbl.textContent.trim();
-            }
+            const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
+            const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
 
-            if (!label && input.hasAttribute('aria-labelledby')) {
-                const ids = input.getAttribute('aria-labelledby').split(/\s+/);
-                label = ids.map(id => {
-                    const el = document.getElementById(id);
-                    return el ? el.textContent.trim() : '';
-                }).filter(Boolean).join(' ');
-            }
+            const allInputs = [...new Set([...standardInputs, ...customSelects])];
 
-            if (!label && input.hasAttribute('aria-label')) {
-                label = input.getAttribute('aria-label').trim();
-            }
-
-            if (!label) {
-                const container = input.closest('div, td, th, span, p');
-                if (container) {
-                    const maybeLabel = Array.from(container.childNodes).find(node => node.nodeType === 3);
-                    if (maybeLabel) label = maybeLabel.textContent.trim();
-                }
-            }
-
-            return label;
-        }
-
-        function extractFields(inputs) {
-            return inputs.map(input => {
-                let options = [];
-                if (input.matches('select')) {
-                    options = Array.from(input.options).map(opt => opt.textContent.trim());
-                }
-
-                return {
-                    element: input,
-                    label: getLabelForInput(input),
-                    options
-                };
-            });
-        }
-
-        function detectRepeaters(form = document) {
-            const repeaters = [];
-            const repeatInputs = new Set();
-            const clickables = Array.from(form.querySelectorAll('button, [role=button], a'));
-
-            clickables.forEach(btn => {
-                const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim();
-                if (!/add/i.test(text) || text.length > 30) return;
-                const parent = btn.parentElement;
-                if (!parent) return;
-
-                const siblings = Array.from(parent.children).filter(c => c !== btn && c.nodeType === 1);
-                if (siblings.length < 1) return;
-
-                const sigMap = new Map();
-                siblings.forEach(node => {
-                    const sig = computeSignature(node);
-                    const arr = sigMap.get(sig) || []; arr.push(node); sigMap.set(sig, arr);
+            customSelects.forEach(input => {
+                input.focus();
+                ['mousedown', 'mouseup', 'click'].forEach(evtName => {
+                    const evt = new MouseEvent(evtName, { bubbles: true });
+                    input.dispatchEvent(evt);
                 });
+            });
 
-                let templateSig = null, blocks = [];
-                sigMap.forEach((nodes, sig) => {
-                    if (nodes.length > blocks.length) {
-                        templateSig = sig; blocks = nodes;
+            setTimeout(() => {
+                const fieldDetails = allInputs.map(input => {
+                    let label = '';
+
+                    if (input.id) {
+                        const lbl = document.querySelector(`label[for='${input.id}']`);
+                        if (lbl) label = lbl.textContent.trim();
                     }
+
+                    if (!label && input.hasAttribute('aria-labelledby')) {
+                        const ids = input.getAttribute('aria-labelledby').split(/\s+/);
+                        label = ids.map(id => {
+                            const el = document.getElementById(id);
+                            return el ? el.textContent.trim() : '';
+                        }).filter(Boolean).join(' ');
+                    }
+
+                    if (!label && input.hasAttribute('aria-label')) {
+                        label = input.getAttribute('aria-label').trim();
+                    }
+
+                    if (!label) {
+                        const container = input.closest('div, td, th, span, p');
+                        if (container) {
+                            const maybeLabel = Array.from(container.childNodes).find(node => node.nodeType === 3);
+                            if (maybeLabel) label = maybeLabel.textContent.trim();
+                        }
+                    }
+
+                    let options = [];
+                    if (input.matches('select')) {
+                        options = Array.from(input.options).map(opt => opt.textContent.trim());
+                    } else {
+                        const listboxId = input.getAttribute('aria-controls');
+                        const listbox = listboxId ? document.getElementById(listboxId) : null;
+
+                        if (listbox && listbox.getAttribute('role') === 'listbox') {
+                            options = Array.from(listbox.querySelectorAll('[role="option"]'))
+                                .map(opt => opt.textContent.trim());
+                        } else {
+                            const fallbackListbox = input.closest('[role="listbox"]');
+                            if (fallbackListbox && fallbackListbox.offsetParent !== null) {
+                                options = Array.from(fallbackListbox.querySelectorAll('[role="option"]'))
+                                    .map(opt => opt.textContent.trim());
+                            }
+                        }
+                    }
+
+                    return { element: input, label, options };
                 });
+                customSelects.forEach(input => {
+                    input.focus();
+                    ['mousedown', 'mouseup', 'click'].forEach(evtName => {
+                        const evt = new MouseEvent(evtName, { bubbles: true });
+                        input.dispatchEvent(evt);
+                    });
+                });
+                console.log("Form Field Summary:", fieldDetails);
+            }, 500);
+            return allInputs;
+        }
 
-                if (!templateSig || blocks.length < 1) return;
+        function injectStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .highlighted-main-form {
+                    outline: 3px solid red !important;
+                }
+                .highlighted-input {
+                    outline: 2px dashed orange !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
-                blocks.forEach(n => Array.from(n.querySelectorAll('input, select, textarea')).forEach(el => repeatInputs.add(el)));
+        // ─── INSERTED: dynamic "*--form" section detector (scoped to main form) ───
+        const SECTION_SUFFIX = '--form';
+        const seenSections = new WeakSet();
+        const sectionObserver = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                m.addedNodes.forEach(node => {
+                    if (!(node instanceof HTMLElement)) return;
+                    detectSections(node);
+                });
+            }
+        });
 
-                const label = text;
-                const extractedBlocks = blocks.map(block => extractFields(Array.from(block.querySelectorAll('input, select, textarea'))));
-
-                repeaters.push({ label, blocks: extractedBlocks });
+        function detectSections(root) {
+            root.querySelectorAll(`[class*="${SECTION_SUFFIX}"]`).forEach(el => {
+                if (
+                    !seenSections.has(el) &&
+                    Array.from(el.classList).some(c => c.endsWith(SECTION_SUFFIX))
+                ) {
+                    seenSections.add(el);
+                    console.log('Detected dynamic section:', el);
+                }
             });
+        }
+        // ─────────────────────────────────────────────────────────────
 
-            return { repeaters, repeatInputs };
+        function highlightForm(form) {
+            if (lastHighlightedForm && lastHighlightedForm !== form) {
+                lastHighlightedForm.classList.remove('highlighted-main-form');
+                const oldInputs = getInputFields(lastHighlightedForm);
+                oldInputs.forEach(el => el.classList.remove('highlighted-input'));
+
+                sectionObserver.disconnect();
+            }
+
+            if (form && form !== lastHighlightedForm) {
+                form.classList.add('highlighted-main-form');
+                const inputs = getInputFields(form);
+                inputs.forEach(el => el.classList.add('highlighted-input'));
+                lastHighlightedForm = form;
+
+                detectSections(form);
+                sectionObserver.observe(form, {
+                    childList: true,
+                    subtree: true
+                });
+            }
         }
 
-        function computeSignature(node) {
-            const tag = node.tagName;
-            const childCount = node.children.length;
-            let depth = 0, cur = node;
-            while (cur.firstElementChild) { depth++; cur = cur.firstElementChild; }
-            return `${tag}|${childCount}|${depth}`;
+        let detectTimeout;
+        let idleTimer;
+
+        function debouncedDetect() {
+            clearTimeout(detectTimeout);
+            detectTimeout = setTimeout(() => {
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    const form = findMainForm();
+                    highlightForm(form);
+                }, 800);
+            }, 200);
         }
 
-        function getStructuredFormInfo() {
-            const form = findMainForm();
-            if (!form) return;
+        const observer = new MutationObserver(debouncedDetect);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
 
-            const { repeaters, repeatInputs } = detectRepeaters(form);
+        injectStyles();
+        debouncedDetect();
 
-            const allInputs = Array.from(form.querySelectorAll('input, select, textarea'));
-            const regularInputs = allInputs.filter(el => !repeatInputs.has(el));
-
-            const fields = extractFields(regularInputs);
-
-            const output = {
-                fields,
-                groups: repeaters.map(r => ({
-                    label: r.label,
-                    blocks: r.blocks.flat()
-                }))
-            };
-
-            console.log(JSON.stringify(output, null, 2));
-        }
-
-        getStructuredFormInfo();
+        window.findMainForm = findMainForm;
+        window.getInputFields = getInputFields;
     }
 
     if (document.readyState === 'loading') {

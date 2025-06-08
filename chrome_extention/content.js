@@ -45,7 +45,7 @@
             const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
             const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
 
-            const allInputs = {input: new Set([...standardInputs, ...customSelects]), groups: new Set()}
+            const allInputs = { input: new Set([...standardInputs, ...customSelects]), groups: new Set() };
 
             customSelects.forEach(input => {
                 input.focus();
@@ -56,7 +56,7 @@
             });
 
             setTimeout(() => {
-                const fieldDetails = allInputs["inputs"].map(input => {
+                const fieldDetails = Array.from(allInputs.input).map(input => {
                     let label = '';
 
                     if (input.id) {
@@ -99,6 +99,14 @@
                             if (fallbackListbox && fallbackListbox.offsetParent !== null) {
                                 options = Array.from(fallbackListbox.querySelectorAll('[role="option"]'))
                                     .map(opt => opt.textContent.trim());
+                            } else {
+                                // React Select fallback
+                                const reactSelectOptions = Array.from(document.querySelectorAll('.select__menu .select__option'))
+                                    .filter(el => el.offsetParent !== null)
+                                    .map(el => el.textContent.trim());
+                                if (reactSelectOptions.length) {
+                                    options = reactSelectOptions;
+                                }
                             }
                         }
                     }
@@ -131,7 +139,7 @@
         }
 
         const SECTION_SUFFIX = '--form';
-        const seenSections = new WeakSet();
+        let seenSections = new Set();
         const sectionObserver = new MutationObserver(mutations => {
             for (const m of mutations) {
                 m.addedNodes.forEach(node => {
@@ -152,21 +160,20 @@
                 }
             });
         }
-        // ─────────────────────────────────────────────────────────────
 
         function highlightForm(form) {
             if (lastHighlightedForm && lastHighlightedForm !== form) {
                 lastHighlightedForm.classList.remove('highlighted-main-form');
-                const oldInputs = getInputFields(lastHighlightedForm);
-                oldInputs.forEach(el => el.classList.remove('highlighted-input'));
-
+                const oldAll = getInputFields(lastHighlightedForm);
+                Array.from(oldAll.input).forEach(el => el.classList.remove('highlighted-input'));
                 sectionObserver.disconnect();
             }
 
             if (form && form !== lastHighlightedForm) {
                 form.classList.add('highlighted-main-form');
-                const inputs = getInputFields(form);
-                inputs.forEach(el => el.classList.add('highlighted-input'));
+                const all = getInputFields(form);
+                Array.from(all.input).forEach(el => el.classList.add('highlighted-input'));
+                seenSections = all.groups;
                 lastHighlightedForm = form;
 
                 detectSections(form);

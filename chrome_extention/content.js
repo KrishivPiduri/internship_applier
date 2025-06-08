@@ -45,7 +45,7 @@
             const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
             const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
 
-            const allInputs = [...new Set([...standardInputs, ...customSelects])];
+            const allInputs = {input: new Set([...standardInputs, ...customSelects]), groups: new Set()}
 
             customSelects.forEach(input => {
                 input.focus();
@@ -56,7 +56,7 @@
             });
 
             setTimeout(() => {
-                const fieldDetails = allInputs.map(input => {
+                const fieldDetails = allInputs["inputs"].map(input => {
                     let label = '';
 
                     if (input.id) {
@@ -103,7 +103,7 @@
                         }
                     }
 
-                    return { element: input, label, options };
+                    return { id: input.id, type: input.type, label, options };
                 });
                 customSelects.forEach(input => {
                     input.focus();
@@ -130,7 +130,6 @@
             document.head.appendChild(style);
         }
 
-        // ─── INSERTED: dynamic "*--form" section detector (scoped to main form) ───
         const SECTION_SUFFIX = '--form';
         const seenSections = new WeakSet();
         const sectionObserver = new MutationObserver(mutations => {

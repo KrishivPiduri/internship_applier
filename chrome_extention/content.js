@@ -47,6 +47,7 @@
 
             const allInputs = { input: new Set([...standardInputs, ...customSelects]), groups: new Set() };
 
+            // Trigger dropdowns to populate custom options if needed
             customSelects.forEach(input => {
                 input.focus();
                 ['mousedown', 'mouseup', 'click'].forEach(evtName => {
@@ -84,44 +85,44 @@
                         }
                     }
 
-                    let options = [];
-                    if (input.matches('select')) {
-                        options = Array.from(input.options).map(opt => opt.textContent.trim());
-                    } else {
-                        const listboxId = input.getAttribute('aria-controls');
-                        const listbox = listboxId ? document.getElementById(listboxId) : null;
+                    let options = null;
 
-                        if (listbox && listbox.getAttribute('role') === 'listbox') {
-                            options = Array.from(listbox.querySelectorAll('[role="option"]'))
-                                .map(opt => opt.textContent.trim());
-                        } else {
-                            const fallbackListbox = input.closest('[role="listbox"]');
-                            if (fallbackListbox && fallbackListbox.offsetParent !== null) {
-                                options = Array.from(fallbackListbox.querySelectorAll('[role="option"]'))
-                                    .map(opt => opt.textContent.trim());
-                            } else {
-                                // React Select fallback
-                                const reactSelectOptions = Array.from(document.querySelectorAll('.select__menu .select__option'))
-                                    .filter(el => el.offsetParent !== null)
-                                    .map(el => el.textContent.trim());
-                                if (reactSelectOptions.length) {
-                                    options = reactSelectOptions;
+                    // Detect and collect dropdown options if relevant
+                    const isSelect = input.tagName.toLowerCase() === 'select';
+                    const ariaListbox = document.getElementById(input.getAttribute('aria-controls') || '');
+                    const roleListbox = input.closest('[role="listbox"]');
+
+                    if (isSelect) {
+                        options = Array.from(input.options).map(opt => opt.textContent.trim());
+                    } else if (ariaListbox && ariaListbox.getAttribute('role') === 'listbox') {
+                        options = Array.from(ariaListbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
+                    } else if (roleListbox && roleListbox.offsetParent !== null) {
+                        options = Array.from(roleListbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
+                    } else {
+                        // Try local React Select fallback (must be adjacent to this input, not global)
+                        const container = input.closest('.select__control');
+                        if (container) {
+                            const menu = container.parentElement?.querySelector('.select__menu');
+                            if (menu) {
+                                const optionEls = Array.from(menu.querySelectorAll('.select__option')).filter(el => el.offsetParent !== null);
+                                if (optionEls.length) {
+                                    options = optionEls.map(el => el.textContent.trim());
                                 }
                             }
                         }
                     }
 
-                    return { id: input.id, type: input.type, label, options };
+                    return {
+                        id: input.id,
+                        type: input.type,
+                        label,
+                        options: Array.isArray(options) && (options ? options.length : false) ? options : null
+                    };
                 });
-                customSelects.forEach(input => {
-                    input.focus();
-                    ['mousedown', 'mouseup', 'click'].forEach(evtName => {
-                        const evt = new MouseEvent(evtName, { bubbles: true });
-                        input.dispatchEvent(evt);
-                    });
-                });
+
                 console.log("Form Field Summary:", fieldDetails);
             }, 500);
+
             return allInputs;
         }
 

@@ -65,15 +65,78 @@ function init() {
                 dynamicSectionRoots.add(el);
             }
         });
-
         // Utility to check if an element is inside any dynamic section
         const isInDynamicSection = el => {
             for (const section of dynamicSectionRoots) {
-                if (section.contains(el)) return true;
+                if (section.contains(el)) {
+                    return true;
+                }
             }
             return false;
         };
 
+        function parseInput(input) {
+            let label = '';
+
+            if (input.id) {
+                const lbl = document.querySelector(`label[for='${input.id}']`);
+                if (lbl) label = lbl.textContent.trim();
+            }
+
+            if (!label && input.hasAttribute('aria-labelledby')) {
+                const ids = input.getAttribute('aria-labelledby').split(/\s+/);
+                label = ids.map(id => {
+                    const el = document.getElementById(id);
+                    return el ? el.textContent.trim() : '';
+                }).filter(Boolean).join(' ');
+            }
+
+            if (!label && input.hasAttribute('aria-label')) {
+                label = input.getAttribute('aria-label').trim();
+            }
+
+            if (!label) {
+                const container = input.closest('div, td, th, span, p');
+                if (container) {
+                    const maybeLabel = Array.from(container.childNodes).find(node => node.nodeType === 3);
+                    if (maybeLabel) label = maybeLabel.textContent.trim();
+                }
+            }
+
+            if (!hasOptions(input)) {
+                return { id: input.id, type: input.type, label, options: null };
+            }
+
+            let options = [];
+            if (input.matches('select')) {
+                options = Array.from(input.options).map(opt => opt.textContent.trim());
+            } else {
+                const listboxId = input.getAttribute('aria-controls');
+                const listbox = listboxId ? document.getElementById(listboxId) : null;
+
+                if (listbox && listbox.getAttribute('role') === 'listbox') {
+                    options = Array.from(listbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
+                } else {
+                    const fallbackListbox = input.closest('[role="listbox"]');
+                    if (fallbackListbox && fallbackListbox.offsetParent !== null) {
+                        options = Array.from(fallbackListbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
+                    } else {
+                        const reactSelectOptions = Array.from(document.querySelectorAll('.select__menu .select__option'))
+                            .filter(el => el.offsetParent !== null)
+                            .map(el => el.textContent.trim());
+                        if (reactSelectOptions.length) {
+                            options = reactSelectOptions;
+                        }
+                    }
+                }
+            }
+
+            return { id: input.id, type: input.type, label, options };
+        }
+        let groups={}
+        dynamicSectionRoots.forEach(section => {
+            groups[section.classList[0]] = Array.from(section.querySelectorAll('input, select, textarea')).map(parseInput);
+        })
         // Filter out inputs in dynamic sections
         const visibleInputs = [...standardInputs, ...customSelects].filter(input => !isInDynamicSection(input));
         visibleInputs.forEach(input => allInputs.input.add(input));
@@ -90,66 +153,9 @@ function init() {
         });
 
         setTimeout(() => {
-            const fieldDetails = Array.from(allInputs.input).map(input => {
-                let label = '';
+            const fieldDetails = Array.from(allInputs.input).map(parseInput);
 
-                if (input.id) {
-                    const lbl = document.querySelector(`label[for='${input.id}']`);
-                    if (lbl) label = lbl.textContent.trim();
-                }
-
-                if (!label && input.hasAttribute('aria-labelledby')) {
-                    const ids = input.getAttribute('aria-labelledby').split(/\s+/);
-                    label = ids.map(id => {
-                        const el = document.getElementById(id);
-                        return el ? el.textContent.trim() : '';
-                    }).filter(Boolean).join(' ');
-                }
-
-                if (!label && input.hasAttribute('aria-label')) {
-                    label = input.getAttribute('aria-label').trim();
-                }
-
-                if (!label) {
-                    const container = input.closest('div, td, th, span, p');
-                    if (container) {
-                        const maybeLabel = Array.from(container.childNodes).find(node => node.nodeType === 3);
-                        if (maybeLabel) label = maybeLabel.textContent.trim();
-                    }
-                }
-
-                if (!hasOptions(input)) {
-                    return { id: input.id, type: input.type, label, options: null };
-                }
-
-                let options = [];
-                if (input.matches('select')) {
-                    options = Array.from(input.options).map(opt => opt.textContent.trim());
-                } else {
-                    const listboxId = input.getAttribute('aria-controls');
-                    const listbox = listboxId ? document.getElementById(listboxId) : null;
-
-                    if (listbox && listbox.getAttribute('role') === 'listbox') {
-                        options = Array.from(listbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
-                    } else {
-                        const fallbackListbox = input.closest('[role="listbox"]');
-                        if (fallbackListbox && fallbackListbox.offsetParent !== null) {
-                            options = Array.from(fallbackListbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
-                        } else {
-                            const reactSelectOptions = Array.from(document.querySelectorAll('.select__menu .select__option'))
-                                .filter(el => el.offsetParent !== null)
-                                .map(el => el.textContent.trim());
-                            if (reactSelectOptions.length) {
-                                options = reactSelectOptions;
-                            }
-                        }
-                    }
-                }
-
-                return { id: input.id, type: input.type, label, options };
-            });
-
-            console.log("Form Field Summary:", fieldDetails);
+            console.log("Form Field Summary:", {inputs: fieldDetails, groups: groups});
         }, 500);
 
         return allInputs;

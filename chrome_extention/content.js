@@ -1,39 +1,23 @@
-/**
- * Returns true if the given <input> or <select> element
- * appears to have extractable options.
- */
-function hasOptions(input) {
-    // 1) Native <select> with at least one <option>
-    if (input.matches('select') && input.options.length > 0) {
-        return true;
-    }
+/* Modified script to exclude inputs inside dynamic sections from the summary */
 
-    // 2) ARIA‐controlled dropdown
+function hasOptions(input) {
+    if (input.matches('select') && input.options.length > 0) return true;
+
     const listboxId = input.getAttribute('aria-controls');
     if (listboxId) {
         const listbox = document.getElementById(listboxId);
-        if (listbox?.getAttribute('role') === 'listbox') {
-            return true;
-        }
+        if (listbox?.getAttribute('role') === 'listbox') return true;
     }
 
-    // 3) Ancestor role=listbox
     const ancestorLB = input.closest('[role="listbox"]');
-    if (ancestorLB && ancestorLB.offsetParent !== null) {
-        return true;
-    }
+    if (ancestorLB && ancestorLB.offsetParent !== null) return true;
 
-    // 4) React-Select or similar patterns on the page
-    //    (we’ll just do a quick document-wide check)
-    const reactContainer = input.closest('.select'); // or refine this with class patterns
+    const reactContainer = input.closest('.select');
     if (reactContainer) {
         const visibleOptions = reactContainer.querySelectorAll('.select__menu .select__option');
-        if ([...visibleOptions].some(el => el.offsetParent !== null)) {
-            return true;
-        }
+        if ([...visibleOptions].some(el => el.offsetParent !== null)) return true;
     }
 
-    // no obvious option container found
     return false;
 }
 
@@ -41,6 +25,8 @@ function init() {
     if (!document || !document.forms || !document.body) return;
 
     let lastHighlightedForm = null;
+    const SECTION_SUFFIX = '--form';
+    let seenSections = new Set();
 
     function findMainForm() {
         const forms = Array.from(document.forms).filter(f => f.offsetParent !== null);
@@ -51,29 +37,15 @@ function init() {
             const numInputs = inputs.length;
             const hasSubmit = form.querySelector('button, input[type="submit"]') !== null;
 
-            let score = 0;
-            score += numInputs * 2;
-            score += hasSubmit ? 5 : 0;
-
-            if (form.classList.contains('application-form') || form.id.includes('main')) {
-                score += 50;
-            }
-
+            let score = numInputs * 2 + (hasSubmit ? 5 : 0);
+            if (form.classList.contains('application-form') || form.id.includes('main')) score += 50;
             return score;
         }
 
-        let bestForm = null;
-        let bestScore = -1;
-
-        for (const form of forms) {
+        return forms.reduce((best, form) => {
             const score = scoreForm(form);
-            if (score > bestScore) {
-                bestScore = score;
-                bestForm = form;
-            }
-        }
-
-        return bestForm;
+            return score > best.score ? { form, score } : best;
+        }, { form: null, score: -1 }).form;
     }
 
     function getInputFields(form) {
@@ -81,15 +53,40 @@ function init() {
 
         const standardInputs = Array.from(form.querySelectorAll('input, select, textarea'));
         const customSelects = Array.from(form.querySelectorAll('.select__input-container input'));
+        const allInputs = { input: new Set(), groups: new Set() };
 
-        const allInputs = { input: new Set([...standardInputs, ...customSelects]), groups: new Set() };
+        // Scan and collect dynamic section roots first
+        const dynamicSectionRoots = new Set();
+        form.querySelectorAll(`[class*="${SECTION_SUFFIX}"]`).forEach(el => {
+            if (
+                !allInputs.groups.has(el) &&
+                Array.from(el.classList).some(c => c.endsWith(SECTION_SUFFIX))
+            ) {
+                dynamicSectionRoots.add(el);
+            }
+        });
 
+        // Utility to check if an element is inside any dynamic section
+        const isInDynamicSection = el => {
+            for (const section of dynamicSectionRoots) {
+                if (section.contains(el)) return true;
+            }
+            return false;
+        };
+
+        // Filter out inputs in dynamic sections
+        const visibleInputs = [...standardInputs, ...customSelects].filter(input => !isInDynamicSection(input));
+        visibleInputs.forEach(input => allInputs.input.add(input));
+
+        // Activate custom selects (if needed)
         customSelects.forEach(input => {
-            input.focus();
-            ['mousedown', 'mouseup', 'click'].forEach(evtName => {
-                const evt = new MouseEvent(evtName, { bubbles: true });
-                input.dispatchEvent(evt);
-            });
+            if (!isInDynamicSection(input)) {
+                input.focus();
+                ['mousedown', 'mouseup', 'click'].forEach(evtName => {
+                    const evt = new MouseEvent(evtName, { bubbles: true });
+                    input.dispatchEvent(evt);
+                });
+            }
         });
 
         setTimeout(() => {
@@ -120,9 +117,11 @@ function init() {
                         if (maybeLabel) label = maybeLabel.textContent.trim();
                     }
                 }
+
                 if (!hasOptions(input)) {
                     return { id: input.id, type: input.type, label, options: null };
                 }
+
                 let options = [];
                 if (input.matches('select')) {
                     options = Array.from(input.options).map(opt => opt.textContent.trim());
@@ -131,15 +130,12 @@ function init() {
                     const listbox = listboxId ? document.getElementById(listboxId) : null;
 
                     if (listbox && listbox.getAttribute('role') === 'listbox') {
-                        options = Array.from(listbox.querySelectorAll('[role="option"]'))
-                            .map(opt => opt.textContent.trim());
+                        options = Array.from(listbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
                     } else {
                         const fallbackListbox = input.closest('[role="listbox"]');
                         if (fallbackListbox && fallbackListbox.offsetParent !== null) {
-                            options = Array.from(fallbackListbox.querySelectorAll('[role="option"]'))
-                                .map(opt => opt.textContent.trim());
+                            options = Array.from(fallbackListbox.querySelectorAll('[role="option"]')).map(opt => opt.textContent.trim());
                         } else {
-                            // React Select fallback
                             const reactSelectOptions = Array.from(document.querySelectorAll('.select__menu .select__option'))
                                 .filter(el => el.offsetParent !== null)
                                 .map(el => el.textContent.trim());
@@ -152,15 +148,10 @@ function init() {
 
                 return { id: input.id, type: input.type, label, options };
             });
-            customSelects.forEach(input => {
-                input.focus();
-                ['mousedown', 'mouseup', 'click'].forEach(evtName => {
-                    const evt = new MouseEvent(evtName, { bubbles: true });
-                    input.dispatchEvent(evt);
-                });
-            });
+
             console.log("Form Field Summary:", fieldDetails);
         }, 500);
+
         return allInputs;
     }
 
@@ -177,28 +168,22 @@ function init() {
         document.head.appendChild(style);
     }
 
-    const SECTION_SUFFIX = '--form';
-    let seenSections = new Set();
-    const sectionObserver = new MutationObserver(mutations => {
-        for (const m of mutations) {
-            m.addedNodes.forEach(node => {
-                if (!(node instanceof HTMLElement)) return;
-                detectSections(node);
-            });
-        }
-    });
-
     function detectSections(root) {
         root.querySelectorAll(`[class*="${SECTION_SUFFIX}"]`).forEach(el => {
-            if (
-                !seenSections.has(el) &&
-                Array.from(el.classList).some(c => c.endsWith(SECTION_SUFFIX))
-            ) {
+            if (!seenSections.has(el) && Array.from(el.classList).some(c => c.endsWith(SECTION_SUFFIX))) {
                 seenSections.add(el);
                 console.log('Detected dynamic section:', el);
             }
         });
     }
+
+    const sectionObserver = new MutationObserver(mutations => {
+        for (const m of mutations) {
+            m.addedNodes.forEach(node => {
+                if (node instanceof HTMLElement) detectSections(node);
+            });
+        }
+    });
 
     function highlightForm(form) {
         if (lastHighlightedForm && lastHighlightedForm !== form) {
@@ -212,14 +197,9 @@ function init() {
             form.classList.add('highlighted-main-form');
             const all = getInputFields(form);
             Array.from(all.input).forEach(el => el.classList.add('highlighted-input'));
-            seenSections = all.groups;
             lastHighlightedForm = form;
-
             detectSections(form);
-            sectionObserver.observe(form, {
-                childList: true,
-                subtree: true
-            });
+            sectionObserver.observe(form, { childList: true, subtree: true });
         }
     }
 
@@ -230,19 +210,12 @@ function init() {
         clearTimeout(detectTimeout);
         detectTimeout = setTimeout(() => {
             clearTimeout(idleTimer);
-            idleTimer = setTimeout(() => {
-                const form = findMainForm();
-                highlightForm(form);
-            }, 800);
+            idleTimer = setTimeout(() => highlightForm(findMainForm()), 800);
         }, 200);
     }
 
     const observer = new MutationObserver(debouncedDetect);
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true
-    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
 
     injectStyles();
     debouncedDetect();

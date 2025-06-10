@@ -180,16 +180,10 @@ function init() {
 
     function highlightForm(form) {
         if (lastHighlightedForm && lastHighlightedForm !== form) {
-            lastHighlightedForm.classList.remove('highlighted-main-form');
-            const oldAll = getInputFields(lastHighlightedForm);
-            Array.from(oldAll.input).forEach(el => el.classList.remove('highlighted-input'));
             sectionObserver.disconnect();
         }
 
         if (form && form !== lastHighlightedForm) {
-            form.classList.add('highlighted-main-form');
-            const all = getInputFields(form);
-            Array.from(all.input).forEach(el => el.classList.add('highlighted-input'));
             lastHighlightedForm = form;
             detectSections(form);
             sectionObserver.observe(form, { childList: true, subtree: true });

@@ -62,7 +62,7 @@ response = json.loads(client.responses.create(
             "content": [
                 {
                     "type": "input_text",
-                    "text": "You are a resume parser. Extract personal information like full name, location, work authorization, and summary. Return all sections, and for 'Education', structure entries into institution, location, start_date, end_date, GPA_weighted, GPA_unweighted, and relevant_coursework. When something isn't provided, just set it to null."
+                    "text": "You are a resume parser. Extract personal information like full name, location, work authorization, and summary. Return all sections, and for 'Education', structure entries into institution, location, start_date, end_date, GPA_weighted, GPA_unweighted, and relevant_coursework. When something isn't provided, just set it to null. Also detect personal info. If there's a full name, split it into first and last name."
                 }
             ]
         },
@@ -96,10 +96,16 @@ response = json.loads(client.responses.create(
                     "sections": {
                         "type": "object",
                         "properties": {
-                            "PersonalInfo": {
+                            "personal_info": {
                                 "type": "object",
                                 "properties": {
-                                    "full_name": {
+                                    "first_name": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "email": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "last_name": {
                                         "type": ["string", "null"]
                                     },
                                     "preferred_name": {
@@ -115,7 +121,7 @@ response = json.loads(client.responses.create(
                                         "type": ["string", "null"]
                                     }
                                 },
-                                "required": ["full_name", "preferred_name", "location", "work_authorization", "summary"],
+                                "required": ["first_name", "last_name", "email", "preferred_name", "location", "work_authorization", "summary"],
                                 "additionalProperties": False
                             },
                             "Contact": {
@@ -445,7 +451,7 @@ response = json.loads(client.responses.create(
                             }
                         },
                         "required": [
-                            "PersonalInfo",
+                            "personal_info",
                             "Contact",
                             "Education",
                             "Experience",

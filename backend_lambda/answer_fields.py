@@ -1,10 +1,12 @@
 import boto3
 from botocore.exceptions import ClientError
 import os
+from openai import OpenAI
 
 os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAZR7BH5KNJM727DVT'
 os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+client = OpenAI(api_key="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")
 
 form={
     "inputs": [
@@ -271,3 +273,66 @@ def get_item_by_partition_key(dynamodb, table_name, partition_key_name, partitio
         return None
 
 print(get_item_by_partition_key(dynamodb, 'resumes', 'id', '8bb821d4-007a-4df1-8c9a-1b79e8da9322'))
+
+
+def get_fill_form_schema():
+    return {
+        "name": "fill_form",
+        "description": "Fills out a job application form using resume data.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "filled_form": {
+                    "type": "object",
+                    "description": "A dictionary where keys are form input IDs and values are the corresponding form values."
+                }
+            },
+            "required": ["filled_form"],
+            "additionalProperties": False
+        }
+    }
+
+def call_openai_fill_form(resume_data, form_schema):
+    tools = [
+        {
+            "type": "function",
+            "name": "fill_form",
+            "description": "Fills out a job application form using resume data.",
+            # <-- Only the JSON Schema goes here
+            "parameters": get_fill_form_schema()["parameters"]
+        }
+    ]
+
+    response = client.responses.create(
+        model="gpt-4.1-nano",
+        temperature=0.1,
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "Map the following resume JSON to the provided form schema. "
+                    "Return a JSON object (via the 'fill_form' function) where keys are form input IDs and values are the best matching values. "
+                    "Include all repeatable group entries. "
+                    "Use true/false for checkboxes and omit file fields if not present."
+                    "- You **must** return every single `id` from the form schema.  \n"
+                    "- If you can’t find a value for a field, set its value to `null`.  \n"
+                    "- For checkboxes, use `true` or `false`.  \n"
+                    "- Omit file fields only if there truly isn’t a file key in the resume.  \n"
+                    "- Return your output via the `fill_form` function call, and no other text."
+                )
+            },
+            {"role": "user", "content": f"Resume data: {resume_data}"},
+            {"role": "user", "content": f"Form schema: {form_schema}"}
+        ],
+        tools=tools,
+        #function_call={"name": "fill_form"}
+    )
+
+    #args = response.choices[0].message["function_call"]["arguments"]
+    return response
+
+# Example usage
+resume_data = get_item_by_partition_key(dynamodb, 'resumes', 'id', '906309e5-9d11-4c82-a8f1-9d99eb999992')
+if resume_data:
+    filled = call_openai_fill_form(resume_data, form)
+    print(filled)

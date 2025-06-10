@@ -62,7 +62,7 @@ response = json.loads(client.responses.create(
             "content": [
                 {
                     "type": "input_text",
-                    "text": "You are a resume parser. Return all sections, and for 'Education', structure entries into institution, location, start_date, end_date, GPA_weighted, GPA_unweighted, and relevant_coursework. WHen something isn't provided, just set it to null."
+                    "text": "You are a resume parser. Extract personal information like full name, location, work authorization, and summary. Return all sections, and for 'Education', structure entries into institution, location, start_date, end_date, GPA_weighted, GPA_unweighted, and relevant_coursework. When something isn't provided, just set it to null."
                 }
             ]
         },
@@ -86,7 +86,7 @@ response = json.loads(client.responses.create(
         {
             "type": "function",
             "name": "parse_resume_sections_structured",
-            "description": "Extract structured sections from resume text, including contact, education, experience, projects, and more.",
+            "description": "Extract structured sections from resume text, including personal info, contact, education, experience, projects, and more.",
             "parameters": {
                 "type": "object",
                 "required": [
@@ -96,6 +96,28 @@ response = json.loads(client.responses.create(
                     "sections": {
                         "type": "object",
                         "properties": {
+                            "PersonalInfo": {
+                                "type": "object",
+                                "properties": {
+                                    "full_name": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "preferred_name": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "location": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "work_authorization": {
+                                        "type": ["string", "null"]
+                                    },
+                                    "summary": {
+                                        "type": ["string", "null"]
+                                    }
+                                },
+                                "required": ["full_name", "preferred_name", "location", "work_authorization", "summary"],
+                                "additionalProperties": False
+                            },
                             "Contact": {
                                 "type": "object",
                                 "properties": {
@@ -423,6 +445,7 @@ response = json.loads(client.responses.create(
                             }
                         },
                         "required": [
+                            "PersonalInfo",
                             "Contact",
                             "Education",
                             "Experience",
@@ -447,7 +470,10 @@ response = json.loads(client.responses.create(
     top_p=1,
     store=True
 ).output[0].arguments)
-response['id'] = str(uuid.uuid4())
+
+id=str(uuid.uuid4())
+response['id'] = id
+print(id)
 
 def clean_none(obj):
     if isinstance(obj, dict):

@@ -180,10 +180,12 @@ function init() {
 
     function highlightForm(form) {
         if (lastHighlightedForm && lastHighlightedForm !== form) {
+            getInputFields(lastHighlightedForm);
             sectionObserver.disconnect();
         }
 
         if (form && form !== lastHighlightedForm) {
+            getInputFields(form);
             lastHighlightedForm = form;
             detectSections(form);
             sectionObserver.observe(form, { childList: true, subtree: true });

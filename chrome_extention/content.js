@@ -161,19 +161,6 @@ function init() {
         return allInputs;
     }
 
-    function injectStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            .highlighted-main-form {
-                outline: 3px solid red !important;
-            }
-            .highlighted-input {
-                outline: 2px dashed orange !important;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
     function detectSections(root) {
         root.querySelectorAll(`[class*="${SECTION_SUFFIX}"]`).forEach(el => {
             if (!seenSections.has(el) && Array.from(el.classList).some(c => c.endsWith(SECTION_SUFFIX))) {
@@ -223,7 +210,6 @@ function init() {
     const observer = new MutationObserver(debouncedDetect);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
 
-    injectStyles();
     debouncedDetect();
 
     window.findMainForm = findMainForm;

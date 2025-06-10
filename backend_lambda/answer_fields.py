@@ -314,7 +314,7 @@ def call_openai_fill_form(resume_data, form_schema):
                     "Return a JSON object (via the 'fill_form' function) where keys are form input IDs and values are the best matching values. "
                     "Include all repeatable group entries. "
                     "Use true/false for checkboxes and omit file fields if not present."
-                    "- You **must** return every single `id` from the form schema.  \n"
+                    "- You **must** return every single `id` from the form schema. If certain information is not specified, just set the value to null..  \n"
                     "- If you can’t find a value for a field, set its value to `null`.  \n"
                     "- For checkboxes, use `true` or `false`.  \n"
                     "- Omit file fields only if there truly isn’t a file key in the resume.  \n"

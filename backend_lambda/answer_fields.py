@@ -238,44 +238,6 @@ form={
     }
 }
 
-def get_item_by_partition_key(dynamodb, table_name, partition_key_name, partition_key_value):
-    """
-    Retrieves an item from DynamoDB table using the partition key.
-
-    Args:
-        dynamodb (boto3.resource): The DynamoDB resource
-        table_name (str): The name of the DynamoDB table
-        partition_key_name (str): The name of the partition key
-        partition_key_value (str): The value of the partition key
-
-    Returns:
-        dict: The item as a dictionary if found, None otherwise
-    """
-    try:
-        # Get the table
-        table = dynamodb.Table(table_name)
-
-        # Get the item
-        response = table.get_item(
-            Key={
-                partition_key_name: partition_key_value
-            }
-        )
-
-        # Check if item exists
-        if 'Item' in response:
-            return response['Item']
-        else:
-            print(f"No item found with {partition_key_name} = {partition_key_value}")
-            return None
-
-    except ClientError as e:
-        print(f"Error retrieving item: {e}")
-        return None
-
-print(get_item_by_partition_key(dynamodb, 'resumes', 'id', '8bb821d4-007a-4df1-8c9a-1b79e8da9322'))
-
-
 def get_fill_form_schema():
     return {
         "name": "fill_form",
@@ -330,20 +292,10 @@ def call_openai_fill_form(resume_data, form_schema):
 
     return response
 
-# Example usage
-resume_data = get_item_by_partition_key(dynamodb, 'resumes', 'id', '906309e5-9d11-4c82-a8f1-9d99eb999992')
-if resume_data:
-    filled = call_openai_fill_form(resume_data, form)
-    print(filled)
-
 # Lambda function handler for API Gateway integration
 # Ensure Lambda Proxy Integration is enabled for this function in API Gateway
 
 def lambda_handler(event, context):
-    """
-    AWS Lambda handler to process HTTP requests via API Gateway.
-    Expects a JSON body with 'resume_id'.
-    """
     # Parse and validate request body
     try:
         body = json.loads(event.get('body', '{}'))
@@ -359,7 +311,19 @@ def lambda_handler(event, context):
         }
 
     # Fetch resume data from DynamoDB
-    resume_data = get_item_by_partition_key(dynamodb, 'resumes', 'id', resume_id)
+    try:
+        table = dynamodb.Table('resumes')
+        response = table.get_item(Key={'id': resume_id})
+        resume_data = response.get('Item')
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Error fetching resume: {str(e)}'})
+        }
     if not resume_data:
         return {
             'statusCode': 404,
@@ -383,12 +347,29 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': f'Error processing form: {str(e)}'})
         }
 
-    # Return the AI response in the response body
+    # Write the AI response to DynamoDB (update the same item or create new)
+    try:
+        table.update_item(
+            Key={'id': resume_id},
+            UpdateExpression='SET ai_response = :val',
+            ExpressionAttributeValues={':val': json.dumps(ai_response, default=str)}
+        )
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Failed to write AI response to DynamoDB: {str(e)}'})
+        }
+
+    # Return only the resume_id in the response
     return {
         'statusCode': 200,
         'headers': {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
         },
-        'body': json.dumps({'result': ai_response})
+        'body': json.dumps({'resume_id': resume_id})
     }

@@ -383,30 +383,12 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': f'Error processing form: {str(e)}'})
         }
 
-    # Write the AI response to DynamoDB (update the same item)
-    try:
-        table = dynamodb.Table('resumes')
-        table.update_item(
-            Key={'id': resume_id},
-            UpdateExpression='SET ai_response = :val',
-            ExpressionAttributeValues={':val': json.dumps(ai_response, default=str)}
-        )
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': f'Failed to write AI response to DynamoDB: {str(e)}'})
-        }
-
-    # Return only the resume_id in the response
+    # Return the AI response in the response body
     return {
         'statusCode': 200,
         'headers': {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
         },
-        'body': json.dumps({'resume_id': resume_id})
+        'body': json.dumps({'result': ai_response})
     }

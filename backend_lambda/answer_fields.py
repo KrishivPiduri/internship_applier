@@ -2,6 +2,7 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 from openai import OpenAI
+import json
 
 os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAZR7BH5KNJM727DVT'
 os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
@@ -325,10 +326,8 @@ def call_openai_fill_form(resume_data, form_schema):
             {"role": "user", "content": f"Form schema: {form_schema}"}
         ],
         tools=tools,
-        #function_call={"name": "fill_form"}
     )
 
-    #args = response.choices[0].message["function_call"]["arguments"]
     return response
 
 # Example usage
@@ -336,3 +335,78 @@ resume_data = get_item_by_partition_key(dynamodb, 'resumes', 'id', '906309e5-9d1
 if resume_data:
     filled = call_openai_fill_form(resume_data, form)
     print(filled)
+
+# Lambda function handler for API Gateway integration
+# Ensure Lambda Proxy Integration is enabled for this function in API Gateway
+
+def lambda_handler(event, context):
+    """
+    AWS Lambda handler to process HTTP requests via API Gateway.
+    Expects a JSON body with 'resume_id'.
+    """
+    # Parse and validate request body
+    try:
+        body = json.loads(event.get('body', '{}'))
+        resume_id = body['resume_id']
+    except (KeyError, json.JSONDecodeError):
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': 'Missing or invalid resume_id in request body.'})
+        }
+
+    # Fetch resume data from DynamoDB
+    resume_data = get_item_by_partition_key(dynamodb, 'resumes', 'id', resume_id)
+    if not resume_data:
+        return {
+            'statusCode': 404,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Resume with id {resume_id} not found.'})
+        }
+
+    # Call OpenAI to fill the form
+    try:
+        ai_response = call_openai_fill_form(resume_data, form)
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Error processing form: {str(e)}'})
+        }
+
+    # Write the AI response to DynamoDB (update the same item)
+    try:
+        table = dynamodb.Table('resumes')
+        table.update_item(
+            Key={'id': resume_id},
+            UpdateExpression='SET ai_response = :val',
+            ExpressionAttributeValues={':val': json.dumps(ai_response, default=str)}
+        )
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': f'Failed to write AI response to DynamoDB: {str(e)}'})
+        }
+
+    # Return only the resume_id in the response
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        },
+        'body': json.dumps({'resume_id': resume_id})
+    }

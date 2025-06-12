@@ -1,27 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <title>PDF Uploader</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       padding: 10px;
-      width: 200px;
+      width: 250px;
     }
-    button {
-      padding: 10px;
-      background: #4caf50;
-      color: white;
-      border: none;
-      width: 100%;
-      cursor: pointer;
-      font-weight: bold;
+    input[type="file"], button {
+      margin-top: 10px;
+      display: block;
     }
   </style>
-  <title>Internship Applier</title>
 </head>
 <body>
-<h3>Form Detector</h3>
-<button id="detect">Scan Page</button>
+<h3>Upload a PDF</h3>
+<input type="file" id="pdfInput" accept="application/pdf" />
+<button id="submitBtn">Submit</button>
+<div id="status"></div>
+
 <script src="popup.js"></script>
 </body>
 </html>

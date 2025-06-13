@@ -1,3 +1,10 @@
+document.getElementById('autofillBtn').addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'FILL_FORM' });
+    });
+});
+
+
 let selectedFile = null;
 
 document.getElementById("pdfInput").addEventListener("change", function (e) {

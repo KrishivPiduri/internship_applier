@@ -1,9 +1,242 @@
 import boto3
+from botocore.exceptions import ClientError
+import os
 from openai import OpenAI
 import json
 
+os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAZR7BH5KNJM727DVT'
+os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-client = OpenAI()
+client = OpenAI(api_key="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")
+
+form={
+    "inputs": [
+        {
+            "id": "first_name",
+            "type": "text",
+            "label": "First Name*",
+            "options": None
+        },
+        {
+            "id": "last_name",
+            "type": "text",
+            "label": "Last Name*",
+            "options": None
+        },
+        {
+            "id": "email",
+            "type": "text",
+            "label": "Email*",
+            "options": None
+        },
+        {
+            "id": "phone",
+            "type": "text",
+            "label": "Phone*",
+            "options": None
+        },
+        {
+            "id": "resume",
+            "type": "file",
+            "label": "Attach",
+            "options": None
+        },
+        {
+            "id": "question_30223599002",
+            "type": "text",
+            "label": "Please confirm your graduation time frame.*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_30223607002",
+            "type": "text",
+            "label": "What are your preferred pronouns?*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_31964051002",
+            "type": "text",
+            "label": "LinkedIn Profile",
+            "options": None
+        },
+        {
+            "id": "question_31226333002",
+            "type": "text",
+            "label": "Current Location*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_30223600002",
+            "type": "text",
+            "label": "Current Employer",
+            "options": None
+        },
+        {
+            "id": "question_30223601002",
+            "type": "text",
+            "label": "Work Authorization*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_30223602002",
+            "type": "text",
+            "label": "Sponsorship Requirements*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_30223603002",
+            "type": "text",
+            "label": "If so, please explain (visa status and expiration)",
+            "options": None
+        },
+        {
+            "id": "question_30223604002",
+            "type": "text",
+            "label": "How did you hear about Optiver? *",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "question_30223605002",
+            "type": "text",
+            "label": "If other, please explain",
+            "options": None
+        },
+        {
+            "id": "question_30223606002[]_199112700002",
+            "type": "checkbox",
+            "label": "Austin",
+            "options": None
+        },
+        {
+            "id": "question_30223606002[]_199112701002",
+            "type": "checkbox",
+            "label": "Chicago",
+            "options": None
+        },
+        {
+            "id": "question_30223608002",
+            "type": "text",
+            "label": "Terms and Conditions*",
+            "options": None
+        },
+        {
+            "id": "",
+            "type": "text",
+            "label": "",
+            "options": None
+        },
+        {
+            "id": "gender",
+            "type": "text",
+            "label": "Gender",
+            "options": None
+        },
+        {
+            "id": "hispanic_ethnicity",
+            "type": "text",
+            "label": "Are you Hispanic/Latino?",
+            "options": None
+        },
+        {
+            "id": "veteran_status",
+            "type": "text",
+            "label": "Veteran Status",
+            "options": None
+        },
+        {
+            "id": "disability_status",
+            "type": "text",
+            "label": "Disability Status",
+            "options": [
+                "Yes, I have a disability, or have had one in the past",
+                "No, I do not have a disability and have not had one in the past",
+                "I do not want to answer"
+            ]
+        }
+    ],
+    "groups": {
+        "education--form": [
+            {
+                "id": "school--0",
+                "type": "text",
+                "label": "School",
+                "options": None
+            },
+            {
+                "id": "degree--0",
+                "type": "text",
+                "label": "Degree",
+                "options": None
+            },
+            {
+                "id": "discipline--0",
+                "type": "text",
+                "label": "Discipline",
+                "options": None
+            },
+            {
+                "id": "start-month--0",
+                "type": "text",
+                "label": "Start date month",
+                "options": None
+            },
+            {
+                "id": "start-year--0",
+                "type": "number",
+                "label": "Start date year",
+                "options": None
+            },
+            {
+                "id": "end-month--0",
+                "type": "text",
+                "label": "End date month",
+                "options": None
+            },
+            {
+                "id": "end-year--0",
+                "type": "number",
+                "label": "End date year",
+                "options": None
+            }
+        ]
+    }
+}
 
 def build_fill_form_json_schema(form):
     """
@@ -142,7 +375,7 @@ def call_openai_fill_form(resume_data, form_schema):
 
 def lambda_handler():
     table = dynamodb.Table('resumes')
-    response = table.get_item(Key={'id': id})
+    response = table.get_item(Key={'id': '7c710118-2e35-4db6-9415-1650ce437f22'})
     resume_data = response.get('Item')
     print(resume_data)
 
@@ -150,3 +383,5 @@ def lambda_handler():
     ai_response = call_openai_fill_form(resume_data, form)
     print(ai_response)
     print(json.loads(ai_response.output[0].content[0].text))
+
+lambda_handler()

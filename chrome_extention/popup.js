@@ -1,6 +1,15 @@
 document.getElementById('autofillBtn').addEventListener('click', () => {
+    const resumeId = document.getElementById('resumeIdInput').value.trim();
+    if (!resumeId) {
+        alert('Please enter a resume ID.');
+        return;
+    }
+
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'FILL_FORM' });
+        chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'FILL_FORM',
+            resumeId: resumeId
+        });
     });
 });
 
@@ -19,6 +28,8 @@ document.getElementById("pdfInput").addEventListener("change", function (e) {
     }
 });
 
+
+const resumeIdDisplay = document.getElementById("resumeIdDisplay");
 document.getElementById("submitBtn").addEventListener("click", async () => {
     const status = document.getElementById("status");
 
@@ -37,7 +48,8 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
         });
 
         if (!res.ok) throw new Error("Failed to get presigned URL");
-        const presignedUrl = await res.json().then(data => data['uploadUrl']);
+        const [presignedUrl, id] = await res.json().then(data => [data['uploadUrl'], data['id']]);
+        resumeIdDisplay.textContent = `Your Resume ID (this code is reusable): ${id}`;
         console.log(presignedUrl);
         // Step 2: Upload to S3
         status.textContent = "Uploading to S3...";

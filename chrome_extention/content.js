@@ -1,12 +1,11 @@
 chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'FILL_FORM') {
-        simulateFetchAndFill();
+        simulateFetchAndFill(message.resumeId);
     }
 });
 
 // Simulated backend response for demo
-async function simulateFetchAndFill() {
-    const resumeId = "7c710118-2e35-4db6-9415-1650ce437f22";
+async function simulateFetchAndFill(resumeId) {
     if (!resumeId) {
         alert("Resume ID is required.");
         return;

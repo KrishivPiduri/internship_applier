@@ -1,24 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PDF Uploader</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 10px;
-      width: 250px;
+      padding: 20px;
+      width: 300px;
+      background-color: #f9f9f9;
     }
-    input[type="file"], button {
-      margin-top: 10px;
+
+    h3 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 15px;
       display: block;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      border: none;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .secondary {
+      background-color: #007BFF;
+    }
+
+    .secondary:hover {
+      background-color: #0069d9;
     }
   </style>
 </head>
 <body>
-<h3>Upload a PDF</h3>
+<h3>PDF Uploader</h3>
+
+<label for="pdfInput">Upload a new resume (PDF)</label>
 <input type="file" id="pdfInput" accept="application/pdf" />
-<button id="submitBtn">Submit</button>
-<button id="autofillBtn">Autofill Form</button>
+<button id="submitBtn">Submit New Resume</button>
+<p id="resumeIdDisplay" style="margin-top: 10px; font-weight: bold; color: #333;"></p>
+<p>Please wait about 2 minutes after uploading your resume for the backend processing to occor before trying to use your code to autofill an internship application.</p>
+
+<label for="resumeIdInput">Enter Resume ID to Autofill Form</label>
+<input type="text" id="resumeIdInput" placeholder="e.g. 7c7101..." />
+<button class="secondary" id="autofillBtn">Autofill Form</button>
+
 <script src="popup.js"></script>
 </body>
 </html>

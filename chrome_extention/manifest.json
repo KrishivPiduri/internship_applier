@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Internship Application Auto-Fill",
   "version": "1.0",
-  "description": "Scans and highlights job application fields for auto-filling.",
+  "description": "Scans internship applications, identifies requred fields, and auto-fills them with relevant information.",
   "permissions": ["scripting", "activeTab"],
   "host_permissions": ["<all_urls>"],
   "action": {

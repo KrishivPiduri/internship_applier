@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Smart Form Detector",
+  "name": "Internship Application Auto-Fill",
   "version": "1.0",
   "description": "Scans and highlights job application fields for auto-filling.",
   "permissions": ["scripting", "activeTab"],

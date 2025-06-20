@@ -4,8 +4,7 @@ import os
 from openai import OpenAI
 import json
 
-os.environ['AWS_ACCESS_KEY_ID'] = 'AKIAZR7BH5KNJM727DVT'
-os.environ['AWS_SECRET_ACCESS_KEY'] = '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'
+=
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 client = OpenAI()
 
